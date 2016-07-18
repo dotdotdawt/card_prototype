@@ -2,15 +2,6 @@
 import random
 import widget
 
-# Globals
-LOW = False
-HIGH = True
-VID_QUALITY = LOW
-TXT_QUALITY = HIGH
-COST = 'cost'
-ATK = 'atk'
-HP = 'hp'
-NAME = 'name'
 
 # Helper functions
 def get_deck_from_cards(cards):
@@ -36,6 +27,9 @@ def get_default_collection():
     cards.append(Creature(4, 'Heroic Loudmouth', None, 4, 5))
     cards.append(Creature(2, 'Corrupt Pipsqueak', None, 3, 2))
     cards.append(Creature(2, 'God of Value', None, 2, 2)) # Draw
+    cards.append(Creature(1, 'Restless', None, 1, 1))
+    cards.append(Creature(3, 'Corrupt Grunt', None, 2, 4))
+    cards.append(Creature(5, 'Disease Spreader', None, 4, 4))
     cards.append(Creature(6, 'Purple Elemental', None, 5, 7))
 
     # Spells

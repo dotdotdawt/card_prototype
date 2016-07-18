@@ -257,6 +257,8 @@ class Creature(TextWidget):
             return self.cfg.colors['selectable'][0]
         elif self.selected:
             return self.cfg.colors['selected'][0]
+        elif not self.selectable and self.played:
+            return self.cfg.colors['played'][0]
 
         else:
             return self.cfg.colors['backdrop'][0]
@@ -312,20 +314,3 @@ class ManaBar(TextWidget):
     def update_player_mana(self, player):
         self.filled = player.mana
         self.unfilled = player.mana_max
-
-    def set_mana(self, mana=None, mana_max=None, mana_used=None):
-        '''
-        Args:
-            mana: blue mana
-            mana_max: gray mana
-            mana_used: highlighted mana
-        '''
-        if mana:
-            self.filled = mana
-        if mana_max:
-            self.unfilled = mana_max
-        if mana_used:
-            self.mana_used = mana_used
-
-
-#self.txt_types = [COST, ATK, HP, NAME]

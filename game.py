@@ -3,18 +3,7 @@ import random
 import collection
 import widget
 
-# Globals
-LOW = False
-HIGH = True
-VID_QUALITY = LOW
-TXT_QUALITY = HIGH
-COST = 'cost'
-ATK = 'atk'
-HP = 'hp'
-NAME = 'name'
 
-
-######
 class Game(object):
     '''
     Handles pygame inputs, pygame clock, screen, catalog of existing
@@ -35,7 +24,7 @@ class Game(object):
         self.cfg = cfg
         self.hands_given = False
         self.selection = None
-        self.visible_cards = []
+        self.cards = []
 
         # minx, maxx, miny, maxy
         self.play_bounds = [0, x, 0, y / 2]
@@ -70,14 +59,8 @@ class Game(object):
         '''
         Draws a card from deck.
         '''
-        self.visible_cards.append(self.players[0].draw_card())
+        self.cards.append(self.players[0].draw_card())
         self.players[0].update_hand()
-        #slot = len(self.hand)
-        #model = DECK.draw_card()
-        #new_card = Card(slot, model.name, model.type, model.cost,
-        #                model.atk, model.hp, model.ability)
-        #new_card.reset_to_hand()
-        #self.hand.append(new_card)
 
     def play_card(self, player, card):
         '''
@@ -123,43 +106,47 @@ class Game(object):
         '''
         Shows everything on the screen in order.
         '''
+        # Wipe
         self.refresh_screen()
+
+        # End Turn Button
         self.end_turn_button.update()
         self.screen.blit(self.end_turn_button.bg[0],
                          self.end_turn_button.bg[1])
 
+        # Mana Bar
         mana = self.players[0].mana
         self.mana_bar.update_player_mana(self.players[0])
         imgs, rects = self.mana_bar.update()
         for name in imgs:
             self.screen.blit(imgs[name], rects[name])
 
-        for l in [self.players[0].hand, self.players[1].hand]:
-            for card in l:
-                # force selected card to cursor
-                if card.selected:
-                    card.x, card.y = pygame.mouse.get_pos()
+        # Cards
+        for card in self.cards:
+            # force selected card to cursor
+            if card.selected:
+                card.x, card.y = pygame.mouse.get_pos()
 
-                # In play
-                if card.played:
-                    if card.sleeping:
-                        card.selectable = False
-                    else:
-                        card.selectable = True
-
-                # In hand
+            # In play
+            if card.played:
+                if card.sleeping:
+                    card.selectable = False
                 else:
-                    player = self.players[0]
-                    if player.mana >= card.cost:
-                        card.selectable = True
-                    else:
-                        card.selectable = False
+                    card.selectable = True
 
-                # displays a card in full
-                imgs, rects = card.update()
-                self.screen.blit(card.bg[0], card.bg[1])
-                for name in imgs:
-                    self.screen.blit(imgs[name], rects[name])
+            # In hand
+            else:
+                player = self.players[0]
+                if player.mana >= card.cost:
+                    card.selectable = True
+                else:
+                    card.selectable = False
+
+            # displays a card in full
+            imgs, rects = card.update()
+            self.screen.blit(card.bg[0], card.bg[1])
+            for name in imgs:
+                self.screen.blit(imgs[name], rects[name])
 
         pygame.display.flip()
 
@@ -178,15 +165,10 @@ class Game(object):
 
                 #### Keyboard ####
                 if event.type == pygame.KEYUP:
-
-                    # ESC
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
-                    # Q -
                     elif event.key == pygame.K_q:
-                        player = self.players[0]
-                        print player.mana_max
-                        print player.mana
+                        pass
 
                 #### Mouse ####
                 if event.type == pygame.MOUSEBUTTONUP:
