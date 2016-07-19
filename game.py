@@ -62,10 +62,11 @@ class Game(object):
         self.cards.append(self.players[0].draw_card())
         self.players[0].update_hand()
 
-    def play_card(self, player, card):
+    def play_card(self, player, card, slot=0):
         '''
         Plays a card from hand.
         '''
+        card.set_to_in_play_slot(slot)
         card.played = True
         card.selected = False
         self.selection = None
@@ -178,18 +179,22 @@ class Game(object):
                         x, y = pygame.mouse.get_pos()
 
                         if self.selection:
-                            min_x, max_x, min_y, max_y = self.play_bounds
-
-                            # In bounds of play
-                            if x >= min_x and x <= max_x:
+                            print self.selection
+                            min_x = [(i*164)+25 for i in range(6)]
+                            min_y = 25 + 460
+                            max_x = [i+120 for i in min_x]
+                            max_y = min_y + 160
+                            slot = 0
+                            found = False
+                            for i in range(len(min_x)):
                                 if y >= min_y and y <= max_y:
-                                    card = self.selection
-                                    player = self.players[0]
-                                    self.play_card(player, card)
-
-                            # Outside of play bounds, de-select
-                            else:
-                                self.selection = None
+                                        if x >= min_x[i] and x <= max_x[i]:
+                                            player = self.players[0]
+                                            card = self.selection
+                                            if not found:
+                                                print i
+                                                self.play_card(player, card, i)
+                                                found = True
 
                         # User free to select something
                         else:
@@ -200,12 +205,13 @@ class Game(object):
                                 else:
                                     self.start_turn()
                             ## Hand cards
-                            for card in self.players[0].hand:
-                                card.selected = False
-                                if card.get_clicked(x, y):
-                                    if card.selectable:
-                                        self.selection = card
-                                        card.selected = True
+                            for cards in self.players[0].hand, self.players[1].hand:
+                                for card in cards:
+                                    card.selected = False
+                                    if card.get_clicked(x, y):
+                                        if card.selectable:
+                                            self.selection = card
+                                            card.selected = True
                             ## Cards in play
                             for card in self.players[0].played_cards:
                                 card.selected = False

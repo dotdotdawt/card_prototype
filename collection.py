@@ -56,7 +56,7 @@ class Player(object):
         self.cfg = settings
         self.first = first
         self.second = not first
-        self.max_hand_size = 6
+        self.max_hand_size = 10
         self.hand = []
         self.played_cards = []
         self.selection = None
@@ -81,7 +81,7 @@ class Player(object):
                                   new_card.dmg, new_card.target)
 
         # If it can fit
-        if slot >= self.max_hand_size:
+        if slot > self.max_hand_size:
             card_instance.discarded = True
             #self.discard(card_instance)
         else:

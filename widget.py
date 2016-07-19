@@ -228,7 +228,8 @@ class TextWidget(Widget):
 
 
 class Creature(TextWidget):
-    def __init__(self, settings, x=0, y=0, x_size=180, y_size=240,
+    # x_size 180 -> 120, y 240 -> 160
+    def __init__(self, settings, x=0, y=0, x_size=120, y_size=160,
                  bg_color=None, model=None):
         super(Creature, self).__init__(settings, x=x, y=y, x_size=x_size,
                                         y_size=y_size, bg_color=bg_color)
@@ -253,6 +254,7 @@ class Creature(TextWidget):
         Returns:
             (int, int, int) or None
         '''
+        self.update_txt_location()
         if self.selectable:
             return self.cfg.colors['selectable'][0]
         elif self.selected:
@@ -268,9 +270,17 @@ class Creature(TextWidget):
             self.txt[txt_type].remap_with_parent(self)
 
     def reset_to_hand(self):
-        self.x = 5 + (186 * self.slot)
-        self.y = 515
+        self.x = 5 + (self.base_size[0] * self.slot)
+        self.y = 600
         self.update_txt_location()
+
+    def set_to_in_play_slot(self, slot=0):
+        self.selected = False
+        self.selectable = False
+        self.played = True
+        self.sleeping = True
+        self.x = 25 + (slot * 164)
+        self.y = 25 + 400
 
 
 class EndTurnButton(TextWidget):
