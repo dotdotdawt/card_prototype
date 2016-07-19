@@ -180,8 +180,8 @@ class Game(object):
 
                         if self.selection:
                             print self.selection
-                            min_x = [(i*164)+25 for i in range(6)]
-                            min_y = 25 + 460
+                            min_x = [(i*164)-25 for i in range(6)]
+                            min_y = 460 - 25
                             max_x = [i+120 for i in min_x]
                             max_y = min_y + 160
                             slot = 0
