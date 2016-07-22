@@ -41,43 +41,79 @@ class Game(object):
         self.screen = pygame.display.set_mode(self.resolution)
         self.fps_clock = pygame.time.Clock()
 
-        # Decide who goes first, placement is decided on
-        # Player() instantiation
-        first = False
-        if random.randint(1, 100) >= 50:
-            first = True
-        self.players = [collection.Player(self.cfg, first),
-                        collection.Player(self.cfg, not first)]
+        # Decide who goes first
+        first = random.randint(0, 1)
+        print 'Going first? %s' % first
+
+        self.playing = collection.Player(self.cfg, first)
+        self.waiting = collection.Player(self.cfg, not first)
+        self.players = [self.playing, self.waiting]
+        if first:
+            self.playing.mana_bar = widget.ManaBar(self.cfg)
+            self.waiting.mana_bar = widget.ManaBar(self.cfg, enemy=True)
+        else:
+            self.playing.mana_bar = widget.ManaBar(self.cfg, enemy=True)
+            self.waiting.mana_bar = widget.ManaBar(self.cfg)
+
+        self.mana_bars = [self.playing.mana_bar, self.waiting.mana_bar]
+        x1, y1, x2, y2 = (self.mana_bars[0].x,
+                          self.mana_bars[0].y,
+                          self.mana_bars[1].x,
+                          self.mana_bars[1].y)
+        print '%i, %i, %i, %i' % (x1, y1, x2, y2)
         self.end_turn_button = widget.EndTurnButton(self.cfg)
-        self.mana_bar = widget.ManaBar(self.cfg)
+
+        # Creature slots
+        self.creature_slots = []
+        x_offset = 25
+        y_offset = 272
+        x_size = 120
+        y_size = 160
+        new_slot = 0
+        for xval in [(i * x_size) for i in range(6)]:
+            for yval in [y_offset, y_offset + y_size]:
+                self.creature_slots.append(widget.CreatureSlot(self.cfg,
+                                                               x=xval+x_offset,
+                                                               y=yval,
+                                                               slot=new_slot))
+                print new_slot
+            new_slot += 1
 
     def start(self):
+        self.hands_given = True
+        self.draw_card(playing=False)
         for _ in range(5):
-            self.draw_card()
+            self.draw_card(playing=True)
+            self.draw_card(playing=False)
 
-    def draw_card(self):
+    def draw_card(self, playing=False):
         '''
         Draws a card from deck.
+        playing means "target of card draw is playing player"
         '''
-        self.cards.append(self.players[0].draw_card())
-        self.players[0].update_hand()
+        if playing:
+            player = self.playing
+        else:
+            player = self.waiting
+        self.cards.append(player.draw_card())
+        player.update_hand()
 
-    def play_card(self, player, card, slot=0):
+    def play_card(self, player, card, slot, y_offset):
         '''
         Plays a card from hand.
         '''
-        card.set_to_in_play_slot(slot)
-        card.played = True
-        card.selected = False
+        card.set_in_play(slot, y_offset)
         self.selection = None
-
         print 'playing %s' % card.name
         player.hand.remove(card)
-        player.played_cards.append(card)
+        player.played.append(card)
         player.mana -= card.cost
+        player.mana_bar.update_mana(player)
+        player.update_hand()
 
-        self.mana_bar.update_player_mana(player)
-        self.players[0].update_hand()
+    def change_ownership(self):
+        p1, p2 = self.waiting, self.playing
+        self.playing, self.waiting = p1, p2
 
     def finish_turn(self):
         '''
@@ -85,8 +121,18 @@ class Game(object):
         We need to make something that involves receiving external data
         in order to process the other turn ending into us.
         '''
-        self.end_turn_button.ready = False
-        self.end_turn_button.inactive = True
+        if not self.hands_given:
+            self.start()
+
+        self.change_ownership()
+        self.end_turn_button.reset(True)
+
+        self.playing.mana_max += 1
+        self.playing.mana = self.playing.mana_max
+        self.draw_card(playing=True)
+        for card in self.cards:
+            if card in self.playing.played:
+                card.wake()
 
     def start_turn(self):
         '''
@@ -94,14 +140,13 @@ class Game(object):
         '''
         if not self.hands_given:
             self.start()
-            self.hands_given = True
-        self.end_turn_button.ready = True
-        self.end_turn_button.inactive = False
-        self.draw_card()
-        player = self.players[0]
-        player.mana_max += 1
-        player.mana = player.mana_max
-        self.mana_bar.update_player_mana(player)
+
+        self.change_ownership()
+        self.end_turn_button.reset(True)
+
+        self.playing.mana_max += 1
+        self.playing.mana = self.playing.mana_max
+        self.draw_card(playing=True)
 
     def update(self):
         '''
@@ -112,15 +157,17 @@ class Game(object):
 
         # End Turn Button
         self.end_turn_button.update()
-        self.screen.blit(self.end_turn_button.bg[0],
-                         self.end_turn_button.bg[1])
+        self.screen.blit(self.end_turn_button.bg[0], self.end_turn_button.bg[1])
 
         # Mana Bar
-        mana = self.players[0].mana
-        self.mana_bar.update_player_mana(self.players[0])
-        imgs, rects = self.mana_bar.update()
-        for name in imgs:
-            self.screen.blit(imgs[name], rects[name])
+        for mana_bar in [self.playing.mana_bar, self.waiting.mana_bar]:
+            imgs, rects = mana_bar.update()
+            for name in imgs:
+                self.screen.blit(imgs[name], rects[name])
+
+        for c_slot in self.creature_slots:
+            c_slot.update()
+            self.screen.blit(c_slot.bg[0], c_slot.bg[1])
 
         # Cards
         for card in self.cards:
@@ -137,8 +184,7 @@ class Game(object):
 
             # In hand
             else:
-                player = self.players[0]
-                if player.mana >= card.cost:
+                if self.playing.mana >= card.cost:
                     card.selectable = True
                 else:
                     card.selectable = False
@@ -163,49 +209,57 @@ class Game(object):
         '''
         while self.running:
             for event in pygame.event.get():
+                if event.type == pygame.MOUSEMOTION:
+                    x, y = pygame.mouse.get_pos()
+                    for c_slot in self.creature_slots:
+                        c_slot.set_hover(x, y)
 
                 #### Keyboard ####
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_ESCAPE:
                         self.running = False
                     elif event.key == pygame.K_q:
-                        pass
+                        print self.playing.mana
+                        print self.waiting.mana
 
                 #### Mouse ####
                 if event.type == pygame.MOUSEBUTTONUP:
+                    x, y = pygame.mouse.get_pos()
+                    print x, y
 
                     ## Left click
                     if event.button == self.left:
-                        x, y = pygame.mouse.get_pos()
-
                         if self.selection:
-                            print self.selection
-                            min_x = [(i*164)-25 for i in range(6)]
-                            min_y = 460 - 25
-                            max_x = [i+120 for i in min_x]
-                            max_y = min_y + 160
-                            slot = 0
-                            found = False
-                            for i in range(len(min_x)):
-                                if y >= min_y and y <= max_y:
-                                        if x >= min_x[i] and x <= max_x[i]:
-                                            player = self.players[0]
-                                            card = self.selection
-                                            if not found:
-                                                print i
-                                                self.play_card(player, card, i)
-                                                found = True
+                            if isinstance(self.selection, widget.Creature):
+                                #print self.selection
+
+                                found = False
+                                for c_slot in self.creature_slots:
+                                    c_slot.set_hover(x, y)
+                                    if c_slot.hover and c_slot.empty:
+                                        y_slot = c_slot
+                                        print 'nugget %i ' % c_slot.slot
+                                        if not found:
+                                            #if c_slot
+                                            c_slot.occupy(self.selection)
+                                            self.play_card(self.playing,
+                                                           self.selection,
+                                                           c_slot.slot,
+                                                           c_slot.y)
+                                            found = True
+                                    if c_slot.hover and not c_slot.empty:
+                                        c_slot.card.combat(self.selection)
 
                         # User free to select something
                         else:
                             ## End turn button
                             if self.end_turn_button.get_clicked(x, y):
-                                if self.end_turn_button.ready:
-                                    self.finish_turn()
-                                else:
-                                    self.start_turn()
+                                #if self.end_turn_button.ready:
+                                self.finish_turn()
+                                #else:
+                                #    self.start_turn()
                             ## Hand cards
-                            for cards in self.players[0].hand, self.players[1].hand:
+                            for cards in self.playing.hand, self.waiting.hand:
                                 for card in cards:
                                     card.selected = False
                                     if card.get_clicked(x, y):
@@ -213,7 +267,7 @@ class Game(object):
                                             self.selection = card
                                             card.selected = True
                             ## Cards in play
-                            for card in self.players[0].played_cards:
+                            for card in self.playing.played:
                                 card.selected = False
                                 if card.get_clicked(x, y):
                                     if card.selectable:
@@ -223,6 +277,8 @@ class Game(object):
                     ## Right click
                     elif event.button == self.right:
                         self.selection = None
+                        for card in self.cards:
+                            card.selected = False
 
             # Normal actions
             self.update()

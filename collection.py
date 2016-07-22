@@ -46,8 +46,6 @@ class Player(object):
     mana: int
     mana_max: int
     first: boolean
-    second: boolean
-    local: boolean -- causes change to logic
     '''
 
     def __init__(self, settings, first=False):
@@ -55,11 +53,15 @@ class Player(object):
         self.mana = 0
         self.cfg = settings
         self.first = first
-        self.second = not first
         self.max_hand_size = 10
+
+        self.cards = []
         self.hand = []
-        self.played_cards = []
+        self.played = []
+        self.discarded = []
+
         self.selection = None
+        self.enemy = not first
         self.setup()
 
     def setup(self):
@@ -80,10 +82,10 @@ class Player(object):
             card_instance = Spell(new_card.cost, new_card.name, new_card.ability,
                                   new_card.dmg, new_card.target)
 
-        # If it can fit
+        self.cards.append(card_instance)
+
         if slot > self.max_hand_size:
-            card_instance.discarded = True
-            #self.discard(card_instance)
+            self.discard(card_instance)
         else:
             self.hand.append(card_instance)
 
@@ -93,6 +95,15 @@ class Player(object):
         for i in range(len(self.hand)):
             self.hand[i].slot = i
             self.hand[i].reset_to_hand()
+            if self.enemy:
+                self.hand[i].enemy_remap()
+        self.mana_bar.update_mana(self)
+
+    def play_card(self, slot):
+        self.played_cards.append()
+
+    def discard(self, card):
+        self.disarded.append(card)
 
 # Card > Creature, Spell
 class Card(object):

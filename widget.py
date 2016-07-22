@@ -50,6 +50,8 @@ class Widget(object):
         self.x = x
         self.y = y
         self.base = (x, y)
+        self.x_size = x_size
+        self.y_size = y_size
         self.base_size = (x_size, y_size)
         self.bg_img = pygame.surface.Surface(self.base_size)
         self.bg_rect = self.bg_img.get_rect()
@@ -229,7 +231,7 @@ class TextWidget(Widget):
 
 class Creature(TextWidget):
     # x_size 180 -> 120, y 240 -> 160
-    def __init__(self, settings, x=0, y=0, x_size=120, y_size=160,
+    def __init__(self, settings, x=0, y=0, x_size=116, y_size=156,
                  bg_color=None, model=None):
         super(Creature, self).__init__(settings, x=x, y=y, x_size=x_size,
                                         y_size=y_size, bg_color=bg_color)
@@ -274,14 +276,74 @@ class Creature(TextWidget):
         self.y = 600
         self.update_txt_location()
 
-    def set_to_in_play_slot(self, slot=0):
+    def set_in_play(self, slot, y_offset):
+        self.reset_stats()
         self.selected = False
         self.selectable = False
         self.played = True
         self.sleeping = True
-        self.x = 25 + (slot * 164)
-        self.y = 25 + 400
+        self.x = 25 + (slot * 120) + 2
+        #self.y = 25 + 400 + y_offset
+        self.y = y_offset + 2
 
+    def enemy_remap(self):
+        self.y -= 500
+
+    def wake(self):
+        self.sleeping = False
+
+    def combat(self, target):
+        ehp = 0
+        self.sleeping = True
+
+    def reset_stats(self):
+        self.ehp = self.hp
+        self.eatk = self.atk
+
+
+class CreatureSlot(Widget):
+    def __init__(self, settings, x=0, y=0, x_size=120, y_size=160,
+                 bg_color=None, slot=0):
+        super(CreatureSlot, self).__init__(settings, x=x, y=y, x_size=x_size,
+                                            y_size=y_size, bg_color=bg_color)
+        self.slot = slot
+        self.empty = True
+        self.hover = False
+        self.card = None
+
+    def get_bg_color(self):
+        if self.empty:
+            if self.hover:
+                return (255, 0, 0)
+            else:
+                return (111, 111, 111, 50)
+        else:
+            if self.card.sleeping:
+                return (150, 200, 0)
+            elif not self.card.sleeping:
+                return (0, 255, 0)
+            #if self.hover:
+            #    return (150, 150, 150, 1)
+            #else:
+            #    return (80, 80, 80, 1)
+
+    def occupy(self, card):
+        self.empty = False
+        self.card = card
+
+    def release(self):
+        self.empty = True
+        self.card = None
+
+    def set_hover(self, x, y):
+        min_x = self.base[0]
+        max_x = self.base[0] + self.base_size[0]
+        min_y = self.base[1]
+        max_y = self.base[1] + self.base_size[1]
+        self.hover = False
+        if x >= min_x and x <= max_x:
+            if y >= min_y and y <= max_y:
+                self.hover = True
 
 class EndTurnButton(TextWidget):
     def __init__(self, settings, x=992, y=792, x_size=192, y_size=56,
@@ -310,17 +372,28 @@ class EndTurnButton(TextWidget):
         self.bg_img.fill(color)
         return color
 
+    def reset(self, state):
+        self.ready = state
+        self.inactive = not state
+
 
 class ManaBar(TextWidget):
     def __init__(self, settings, x=12, y=792, x_size=0, y_size=0,
-                 bg_color=None):
+                 bg_color=None, enemy=False):
         super(ManaBar, self).__init__(settings, x=x, y=y, x_size=x_size,
                                       y_size=y_size, bg_color=bg_color)
         self.txt_types = [UNFILLED, FILLED]
         self.filled = 0
         self.unfilled = 0
+        self.enemy = enemy
+        if enemy:
+            self.y -= 782
         self.setup_children()
 
-    def update_player_mana(self, player):
+    def update_mana(self, player):
+        '''
+        Args:
+            player: player object
+        '''
         self.filled = player.mana
         self.unfilled = player.mana_max
